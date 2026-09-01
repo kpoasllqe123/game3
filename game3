@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>미니 리듬게임</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', '맑은 고딕', sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: #f0f7fc;
+      color: #2c3e50;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      overflow: hidden;
+      transition: background-color 0.5s ease;
+    }
+
+    body.blackout-bg {
+      background-color: #050811;
+    }
+
+    .container {
+      background-color: #ffffff;
+      border: 3px solid #b3daf5;
+      border-radius: 24px;
+      box-shadow: 0 10px 25px rgba(100, 160, 220, 0.15);
+      max-width: 760px;
+      width: 100%;
+      padding: 28px;
+      text-align: center;
+      position: relative;
+      transition: transform 0.5s ease, background-color 0.5s ease, border-color 0.5s ease;
+    }
+
+    .container.fever-blackout {
+      background-color: #0d1117;
+      border-color: #1f293d;
+      box-shadow: 0 0 30px rgba(0, 255, 200, 0.15);
+      color: #8b949e;
+    }
+
+    /* 정전 애니메이션 */
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      25% { opacity: 0.2; }
+      35% { opacity: 0.9; }
+      50% { opacity: 0.1; }
+      65% { opacity: 0.8; }
+      80% { opacity: 0.3; }
+    }
+
+    .container.flicker-effect {
+      animation: flicker 0.6s ease-in-out;
+    }
+
+    @keyframes powerOnFlicker {
+      0% { opacity: 0.2; filter: brightness(0.3); }
+      20% { opacity: 1; filter: brightness(2); }
+      40% { opacity: 0.4; filter: brightness(0.5); }
+      60% { opacity: 0.9; filter: brightness(1.5); }
+      80% { opacity: 0.6; filter: brightness(0.8); }
+      100% { opacity: 1; filter: brightness(1); }
+    }
+
+    .container.power-on-effect {
+      animation: powerOnFlicker 0.5s ease-out;
+    }
+
+    /* 트랙 분쇄 애니메이션 */
+    @keyframes shatterTrack0 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-140px, -40px) rotate(-12deg); }
+    }
+    @keyframes shatterTrack1 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-45px, 50px) rotate(8deg); }
+    }
+    @keyframes shatterTrack2 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(45px, -50px) rotate(-8deg); }
+    }
+    @keyframes shatterTrack3 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(140px, 40px) rotate(12deg); }
+    }
+
+    .game-board.fever-split #track-0 { animation: shatterTrack0 2.2s ease-in-out infinite; }
+    .game-board.fever-split #track-1 { animation: shatterTrack1 2.8s ease-in-out infinite; }
+    .game-board.fever-split #track-2 { animation: shatterTrack2 2.4s ease-in-out infinite; }
+    .game-board.fever-split #track-3 { animation: shatterTrack3 2.6s ease-in-out infinite; }
+
+    /* 사방 이탈 애니메이션 */
+    @keyframes fullEscape0 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-260px, -180px) rotate(-25deg) scale(1.05); }
+    }
+    @keyframes fullEscape1 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-120px, 190px) rotate(18deg) scale(0.95); }
+    }
+    @keyframes fullEscape2 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(120px, -200px) rotate(-18deg) scale(1.05); }
+    }
+    @keyframes fullEscape3 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(260px, 180px) rotate(25deg) scale(0.95); }
+    }
+
+    .game-board.fever-full-escape #track-0 { animation: fullEscape0 3s ease-in-out infinite; }
+    .game-board.fever-full-escape #track-1 { animation: fullEscape1 3.2s ease-in-out infinite; }
+    .game-board.fever-full-escape #track-2 { animation: fullEscape2 2.8s ease-in-out infinite; }
+    .game-board.fever-full-escape #track-3 { animation: fullEscape3 3.4s ease-in-out infinite; }
+
+    /* WIDE SLIDE */
+    @keyframes slideLeftRightLarge {
+      0% { transform: translateX(0px); }
+      25% { transform: translateX(-160px); }
+      75% { transform: translateX(160px); }
+      100% { transform: translateX(0px); }
+    }
+
+    .container.slide-active {
+      animation: slideLeftRightLarge 2.2s ease-in-out infinite;
+    }
+
+    /* 📼 레트로 VHS 노이즈 애니메이션 */
+    @keyframes vhsJitter {
+      0% { transform: translate(0, 0); }
+      20% { transform: translate(-2px, 1px); }
+      40% { transform: translate(2px, -1px); }
+      60% { transform: translate(-1px, 2px); }
+      80% { transform: translate(1px, -1px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    @keyframes vhsBarScan {
+      0% { top: -20%; opacity: 0; }
+      30% { opacity: 0.8; }
+      50% { opacity: 0.3; }
+      80% { opacity: 0.9; }
+      100% { top: 120%; opacity: 0; }
+    }
+
+    .container.virus-vhs-active {
+      position: relative;
+      animation: vhsJitter 0.15s infinite;
+      border-color: #ff0055 !important;
+      box-shadow: 0 0 35px rgba(255, 0, 85, 0.6) !important;
+      background-color: #0a0306 !important;
+      color: #ff3366 !important;
+    }
+
+    .container.virus-vhs-active::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.4),
+        rgba(0, 0, 0, 0.4) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      pointer-events: none;
+      z-index: 10;
+      border-radius: 20px;
+    }
+
+    .container.virus-vhs-active::after {
+      content: "";
+      position: absolute;
+      left: 0; width: 100%; height: 30px;
+      background: rgba(255, 0, 85, 0.25);
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+      pointer-events: none;
+      z-index: 11;
+      animation: vhsBarScan 2s linear infinite;
+    }
+
+    /* 🖥️ 백신 팝업 창 */
+    .retro-antivirus-pop {
+      display: none;
+      position: absolute;
+      top: 30px;
+      right: -360px;
+      width: 340px;
+      background-color: #c0c0c0;
+      border: 4px solid;
+      border-color: #ffffff #808080 #808080 #ffffff;
+      box-shadow: 8px 8px 18px rgba(0,0,0,0.7);
+      padding: 8px;
+      z-index: 99;
+      font-family: 'Courier New', monospace;
+      text-align: left;
+    }
+
+    .retro-title-bar {
+      background: linear-gradient(90deg, #000080, #1084d0);
+      color: #ffffff;
+      padding: 6px 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .retro-body {
+      padding: 14px 10px;
+      font-size: 0.95rem;
+      color: #000;
+      line-height: 1.5;
+    }
+
+    .retro-progress-border {
+      border: 2px solid;
+      border-color: #808080 #ffffff #ffffff #808080;
+      background-color: #ffffff;
+      height: 28px;
+      margin: 14px 0;
+      padding: 2px;
+    }
+
+    .retro-progress-fill {
+      width: 0%;
+      height: 100%;
+      background-color: #000080;
+      transition: width 0.2s ease;
+    }
+
+    /* ⚠️ 에러 팝업 창 */
+    .glitch-error-pop {
+      position: absolute;
+      width: 260px;
+      background-color: #c0c0c0;
+      border: 3px solid;
+      border-color: #ffffff #808080 #808080 #ffffff;
+      box-shadow: 6px 6px 16px rgba(0,0,0,0.8);
+      padding: 6px;
+      z-index: 100;
+      font-family: 'Courier New', monospace;
+      text-align: left;
+      pointer-events: none;
+    }
+
+    .glitch-error-pop .retro-title-bar {
+      background: linear-gradient(90deg, #800000, #e60000);
+      font-size: 0.9rem;
+    }
+
+    /* 🕵️ 비밀 개발자 설정 창 전용 스타일 */
+    .secret-box {
+      display: none;
+      background-color: #fff0f3;
+      border: 2px dashed #ff0055;
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 16px;
+      animation: secretPulse 1.5s infinite alternate;
+    }
+
+    @keyframes secretPulse {
+      0% { border-color: #ff0055; box-shadow: 0 0 5px rgba(255, 0, 85, 0.2); }
+      100% { border-color: #9b59b6; box-shadow: 0 0 15px rgba(155, 89, 182, 0.4); }
+    }
+
+    .secret-box h3 {
+      color: #c0392b;
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+    }
+
+    .gimmick-toggle-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    .gimmick-toggle-grid label {
+      font-size: 0.85rem;
+      font-weight: normal;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      color: #1b4f72;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      font-size: 1.05rem;
+      color: #5d6d7e;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      background-color: #e8f4fc;
+      border: 2px solid #90c8f0;
+      border-radius: 14px;
+      padding: 12px 24px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #1b4f72;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background-color: #d4eaf9;
+      border-color: #4a90e2;
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background-color: #fdeded;
+      border-color: #f5b7b1;
+      color: #c0392b;
+    }
+
+    .menu-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .difficulty-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .diff-btn {
+      flex: 1;
+      padding: 14px 8px;
+    }
+
+    .settings-box {
+      text-align: left;
+      background-color: #f9fbfd;
+      border: 2px solid #c2e0f6;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .setting-item {
+      margin-bottom: 16px;
+    }
+
+    .setting-item label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #2c3e50;
+    }
+
+    .setting-item select, .setting-item input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #b3daf5;
+      font-size: 1rem;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .checkbox-label input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .key-inputs {
+      display: flex;
+      gap: 8px;
+    }
+
+    .key-inputs input {
+      text-align: center;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      transition: opacity 0.5s ease;
+    }
+
+    .combo-container {
+      margin-bottom: 12px;
+      background-color: #eaf4fc;
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      transition: all 0.5s ease;
+    }
+
+    .container.fever-blackout .combo-container {
+      background-color: #161b22;
+    }
+
+    .combo-title {
+      font-size: 0.85rem;
+      color: #5d6d7e;
+    }
+
+    .combo-num {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #2980b9;
+    }
+
+    .gauge-wrapper {
+      margin-bottom: 12px;
+      text-align: left;
+      transition: opacity 0.5s ease;
+    }
+
+    .gauge-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .gauge-container {
+      width: 100%;
+      height: 18px;
+      background-color: #d6eaf8;
+      border-radius: 9px;
+      overflow: hidden;
+      position: relative;
+      transition: background-color 0.5s ease;
+    }
+
+    .gauge-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #3498db, #e74c3c);
+      transition: width 0.1s linear, background 0.5s ease;
+    }
+
+    .gauge-container.blackout {
+      background-color: #050811;
+      border: 1px solid #1f293d;
+    }
+
+    .gauge-fill.blackout {
+      background: #111827 !important;
+    }
+
+    .game-main-layout {
+      display: flex;
+      gap: 12px;
+    }
+
+    .side-stats {
+      width: 130px;
+      background-color: #eaf4fc;
+      border-radius: 16px;
+      padding: 16px 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      border: 2px solid #c2e0f6;
+      transition: all 0.5s ease;
+    }
+
+    .container.fever-blackout .side-stats {
+      background-color: #161b22;
+      border-color: #30363d;
+    }
+
+    .stat-box {
+      background-color: #ffffff;
+      border-radius: 10px;
+      padding: 10px 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      transition: background-color 0.5s ease;
+    }
+
+    .container.fever-blackout .stat-box {
+      background-color: #0d1117;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .container.fever-blackout .stat-value {
+      color: #c9d1d9;
+    }
+
+    .game-board {
+      position: relative;
+      flex: 1;
+      height: 580px;
+      background-color: #2c3e50;
+      border-radius: 16px;
+      overflow: visible;
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      transition: all 0.5s ease;
+    }
+
+    .game-board.fever-speed {
+      box-shadow: 0 0 25px #e74c3c;
+      border: 3px solid #e74c3c;
+    }
+
+    .game-board.fever-slide {
+      box-shadow: 0 0 25px #9b59b6;
+      border: 3px solid #9b59b6;
+    }
+
+    .game-board.fever-split {
+      box-shadow: 0 0 35px #e67e22;
+      border: 3px dashed #e67e22;
+      background-color: rgba(26, 37, 47, 0.4);
+    }
+
+    .game-board.fever-blackout {
+      background-color: #030508;
+      box-shadow: 0 0 20px rgba(0, 255, 200, 0.3);
+      border: 2px solid #00ffcc;
+    }
+
+    .game-board.fever-full-escape {
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    .track {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      background-color: rgba(44, 62, 80, 0.95);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.5s ease;
+      border-radius: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      overflow: hidden;
+    }
+
+    .game-board.fever-blackout .track {
+      background-color: rgba(5, 10, 20, 0.98);
+      border-color: rgba(0, 255, 200, 0.1);
+    }
+
+    .game-board.fever-full-escape .track {
+      background-color: rgba(5, 10, 20, 0.95);
+      border-color: #ff0055;
+      box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+    }
+
+    .hit-line {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 14px;
+      background-color: #3498db;
+      box-shadow: 0 0 10px #3498db;
+      z-index: 2;
+      transition: background-color 0.5s ease, box-shadow 0.5s ease;
+    }
+
+    .game-board.fever-blackout .hit-line {
+      background-color: #00ffcc;
+      box-shadow: 0 0 15px #00ffcc;
+    }
+
+    .game-board.fever-full-escape .hit-line {
+      background-color: #ff0055;
+      box-shadow: 0 0 15px #ff0055;
+    }
+
+    .note {
+      position: absolute;
+      width: 80%;
+      left: 10%;
+      height: 36px;
+      background-color: #f1c40f;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.4rem;
+      z-index: 3;
+      transition: box-shadow 0.3s ease, background-color 0.3s ease;
+    }
+
+    .note.glow-note {
+      background-color: #00ffcc !important;
+      box-shadow: 0 0 20px #00ffcc, 0 0 35px #00ffcc !important;
+      color: #000;
+    }
+
+    .note.glow-note-red {
+      background-color: #ff0055 !important;
+      box-shadow: 0 0 20px #ff0055, 0 0 35px #ff0055 !important;
+      color: #fff;
+    }
+
+    .note.cure-note {
+      background-color: #00ffcc !important;
+      box-shadow: 0 0 20px #00ffcc, 0 0 30px #000 !important;
+      border: 2px solid #ffffff;
+    }
+
+    .key-label {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 1.3rem;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 8px 0;
+      z-index: 4;
+      border-radius: 0 0 10px 10px;
+    }
+
+    .game-board.fever-blackout .key-label {
+      color: #00ffcc;
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    .game-board.fever-full-escape .key-label {
+      color: #ff0055;
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    .hide-ui {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+
+    #settings-view, #game-view, #result-view {
+      display: none;
+    }
+
+    .track.active {
+      background-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .game-board.fever-blackout .track.active {
+      background-color: rgba(0, 255, 200, 0.2);
+    }
+
+    .game-board.fever-full-escape .track.active {
+      background-color: rgba(255, 0, 85, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container" id="main-container">
+    
+    <!-- 확대된 백신 팝업 창 -->
+    <div class="retro-antivirus-pop" id="antivirus-pop">
+      <div class="retro-title-bar">
+        <span>VIRUS_CLEANER.EXE</span>
+        <span style="cursor:pointer;">[X]</span>
+      </div>
+      <div class="retro-body">
+        <div style="font-weight: bold; color: #800000; font-size: 1rem;">[!] CRITICAL SYSTEM CORRUPTED</div>
+        <div style="margin-top: 6px;">시작 프로세스가 바이러스로 인해 마비되었습니다.</div>
+        <div style="margin-top: 6px; color: #000080; font-weight: bold;" id="virus-clean-target-text">💊 치료 백신 노트 수집 필요</div>
+        <div class="retro-progress-border">
+          <div class="retro-progress-fill" id="virus-clean-fill"></div>
+        </div>
+        <div id="virus-clean-status" style="font-weight: bold; font-size: 1.05rem;">CLEANING: 0%</div>
+      </div>
+    </div>
+
+    <!-- 1. 메인 메뉴 -->
+    <div id="main-view">
+      <h1>🎵 이모지 리듬게임</h1>
+      <p class="subtitle">비트에 맞춰 키를 눌러보세요!</p>
+
+      <div class="menu-box">
+        <div class="difficulty-group">
+          <button class="btn diff-btn" onclick="startGame('easy')">🟢 쉬움</button>
+          <button class="btn diff-btn" onclick="startGame('normal')">🟡 보통</button>
+          <button class="btn diff-btn" onclick="startGame('hard')">🔴 어려움</button>
+        </div>
+        <button class="btn" style="margin-top: 10px;" onclick="showSettings()">⚙️ 설정</button>
+      </div>
+    </div>
+
+    <!-- 2. 설정 화면 -->
+    <div id="settings-view">
+      <h1>⚙️ 게임 설정</h1>
+      <p class="subtitle">원하는 환경으로 변경하세요</p>
+
+      <div class="settings-box">
+        <div class="setting-item">
+          <label>플레이 시간 선택 (1~10분)</label>
+          <select id="setting-playtime">
+            <option value="1">1분</option>
+            <option value="2" selected>2분 (기본)</option>
+            <option value="3">3분</option>
+            <option value="5">5분</option>
+            <option value="10">10분</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label>노트 진행 방향</label>
+          <select id="setting-direction">
+            <option value="down">위에서 아래로 (기본)</option>
+            <option value="up">아래에서 위로</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label>속도 배율 (추가 조절)</label>
+          <select id="setting-speed">
+            <option value="1" selected>기본 (1x)</option>
+            <option value="1.5">빠름 (1.5x)</option>
+            <option value="2">매우 빠름 (2x)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label class="checkbox-label">
+            <input type="checkbox" id="setting-gimmick" checked>
+            <span>어려움 기믹 활성화 (랜덤 피버)</span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <label>4키 설정 (키 변경 및 암호 입력)</label>
+          <div class="key-inputs">
+            <input type="text" id="key-0" maxlength="6" value="D" placeholder="D">
+            <input type="text" id="key-1" maxlength="1" value="F">
+            <input type="text" id="key-2" maxlength="1" value="J">
+            <input type="text" id="key-3" maxlength="1" value="K">
+          </div>
+        </div>
+
+        <!-- 🕵️ 비밀 키 인증 시 해제되는 개별 기믹 설정 영역 -->
+        <div class="secret-box" id="secret-setting-box">
+          <h3>🕵️ 비밀 개발자 설정 메뉴 (인증됨)</h3>
+          
+          <div class="setting-item">
+            <label class="checkbox-label">
+              <input type="checkbox" id="secret-gimmick-toggle" checked>
+              <span><strong>전체 난이도에서 기믹 강제 활성화</strong></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label>기믹 게이지 충전 속도</label>
+            <select id="secret-gimmick-rate">
+              <option value="2">낮음 (천천히 발동 - 2% 충전)</option>
+              <option value="5" selected>보통 (기본 - 5% 충전)</option>
+              <option value="10">높음 (자주 발동 - 10% 충전)</option>
+              <option value="100">🔥 즉시 발동 (노트 1개당 100%)</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <label>개별 기믹 온/오프 세부 선택</label>
+            <div class="gimmick-toggle-grid">
+              <label class="checkbox-label"><input type="checkbox" id="toggle-speed" checked> ⚡ SPEED UP</label>
+              <label class="checkbox-label"><input type="checkbox" id="toggle-slide" checked> ↔️ WIDE SLIDE</label>
+              <label class="checkbox-label"><input type="checkbox" id="toggle-split" checked> 💥 SHATTER</label>
+              <label class="checkbox-label"><input type="checkbox" id="toggle-blackout" checked> 💡 BLACKOUT</label>
+              <label class="checkbox-label"><input type="checkbox" id="toggle-fullEscape" checked> 🚨 FULL ESCAPE</label>
+              <label class="checkbox-label"><input type="checkbox" id="toggle-virus" checked> ⚠️ ERROR/백신</label>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <label>ERROR 기믹: 백신 노트(💊) 필요 수량</label>
+            <select id="secret-virus-req">
+              <option value="5">5개 (쉬움)</option>
+              <option value="10" selected>10개 (보통)</option>
+              <option value="15">15개 (어려움)</option>
+              <option value="20">20개 (매우 어려움)</option>
+              <option value="30">30개 (지옥)</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <button class="btn" onclick="saveSettings()">저장 및 돌아가기</button>
+    </div>
+
+    <!-- 3. 게임 화면 -->
+    <div id="game-view">
+      <div class="game-header" id="game-header">
+        <div>⏱️ <span id="time-display">02:00</span></div>
+        <div>점수: <span id="score-display">0</span></div>
+        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.9rem;" onclick="cancelGame()">취소</button>
+      </div>
+
+      <div class="combo-container" id="combo-container">
+        <div>
+          <div class="combo-title">COMBO</div>
+          <div class="combo-num" id="current-combo">0</div>
+        </div>
+        <div>
+          <div class="combo-title">MAX COMBO</div>
+          <div class="combo-num" id="max-combo" style="color: #e67e22;">0</div>
+        </div>
+      </div>
+
+      <div class="gauge-wrapper" id="gauge-wrapper">
+        <div class="gauge-header">
+          <span>⚡ FEVER GAUGE</span>
+          <span id="fever-status-text">CHARGE</span>
+        </div>
+        <div class="gauge-container" id="gauge-container">
+          <div class="gauge-fill" id="gauge-fill"></div>
+        </div>
+      </div>
+
+      <div class="game-main-layout">
+        <div class="side-stats" id="side-stats">
+          <div class="stat-box">
+            <div class="stat-label">HIT</div>
+            <div class="stat-value" id="stat-hit" style="color: #27ae60;">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">MISS</div>
+            <div class="stat-value" id="stat-miss" style="color: #e74c3c;">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">정확도</div>
+            <div class="stat-value" id="stat-accuracy" style="color: #2980b9;">100%</div>
+          </div>
+        </div>
+
+        <div class="game-board" id="game-board">
+          <div class="track" id="track-0">
+            <div class="hit-line" id="hit-line-0"></div>
+            <div class="key-label" id="label-0">D</div>
+          </div>
+          <div class="track" id="track-1">
+            <div class="hit-line" id="hit-line-1"></div>
+            <div class="key-label" id="label-1">F</div>
+          </div>
+          <div class="track" id="track-2">
+            <div class="hit-line" id="hit-line-2"></div>
+            <div class="key-label" id="label-2">J</div>
+          </div>
+          <div class="track" id="track-3">
+            <div class="hit-line" id="hit-line-3"></div>
+            <div class="key-label" id="label-3">K</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 결과 화면 -->
+    <div id="result-view">
+      <h1>🎉 게임 종료!</h1>
+      <p class="subtitle">최종 결과를 확인하세요</p>
+
+      <div class="settings-box" style="text-align: center;">
+        <h2>최종 점수: <span id="final-score" style="color: #3498db;">0</span>점</h2>
+        <p style="margin-top: 8px;">최대 콤보: <span id="final-combo" style="color: #e67e22;">0</span> MAX</p>
+        <p style="margin-top: 4px;">정확도: <span id="final-acc" style="color: #27ae60;">100%</span> (MISS: <span id="final-miss" style="color: #e74c3c;">0</span>)</p>
+      </div>
+
+      <button class="btn" onclick="showMain()">메인으로 돌아가기</button>
+    </div>
+  </div>
+
+  <script>
+    let config = {
+      playTimeMinutes: 2,
+      direction: 'down',
+      speedMultiplier: 1.0,
+      enableGimmick: true,
+      keys: ['D', 'F', 'J', 'K'],
+      secretUnlocked: false,
+      secretGimmickForce: true,
+      secretGaugeIncrement: 5,
+      secretVirusRequired: 10,
+      enabledGimmicks: {
+        speed: true,
+        slide: true,
+        split: true,
+        blackout: true,
+        fullEscape: true,
+        virus: true
+      }
+    };
+
+    let gameState = {
+      active: false,
+      difficulty: 'normal',
+      score: 0,
+      combo: 0,
+      maxCombo: 0,
+      hitCount: 0,
+      missCount: 0,
+      gauge: 0,
+      isFever: false,
+      feverType: null,
+      feverIntervalId: null,
+      feverMultiplier: 1.0,
+      timeLeft: 120,
+      notes: [],
+      baseSpeed: 5,
+      timerId: null,
+      spawnTimerId: null,
+      animId: null,
+      audioCtx: null,
+      glitchTextTimer: null,
+      glitchPopTimer: null,
+      virusCleanCount: 0
+    };
+
+    const emojis = ['⭐', '🌟', '🎵', '🎶', '🔥', '⚡', '🎈', '🎉'];
+    const virusEmojis = ['📼', '☠️', '☣️', '👾', '📟', '⚡', '🔣', '⚠️'];
+
+    function showSettings() {
+      document.getElementById('main-view').style.display = 'none';
+      document.getElementById('settings-view').style.display = 'block';
+    }
+
+    function saveSettings() {
+      config.playTimeMinutes = parseInt(document.getElementById('setting-playtime').value, 10);
+      config.direction = document.getElementById('setting-direction').value;
+      config.speedMultiplier = parseFloat(document.getElementById('setting-speed').value);
+      config.enableGimmick = document.getElementById('setting-gimmick').checked;
+      
+      const key0Input = document.getElementById('key-0').value.trim();
+
+      // 비밀 키 검증 (091109 입력 시)
+      if (key0Input === '091109') {
+        config.secretUnlocked = true;
+        document.getElementById('secret-setting-box').style.display = 'block';
+        // 키 입력란 보안 처리: 091109 제거 및 원래 키로 복구
+        document.getElementById('key-0').value = config.keys[0]; 
+        alert('🔓 비밀 개발자 모드가 해제되었습니다!');
+      } else {
+        if (key0Input.length === 1) {
+          config.keys[0] = key0Input.toUpperCase();
+        }
+      }
+
+      for (let i = 1; i < 4; i++) {
+        const val = document.getElementById(`key-${i}`).value.toUpperCase();
+        config.keys[i] = val || config.keys[i];
+      }
+
+      if (config.secretUnlocked) {
+        config.secretGimmickForce = document.getElementById('secret-gimmick-toggle').checked;
+        config.secretGaugeIncrement = parseInt(document.getElementById('secret-gimmick-rate').value, 10);
+        config.secretVirusRequired = parseInt(document.getElementById('secret-virus-req').value, 10);
+
+        // 개별 기믹 활성화 상태 업데이트
+        config.enabledGimmicks.speed = document.getElementById('toggle-speed').checked;
+        config.enabledGimmicks.slide = document.getElementById('toggle-slide').checked;
+        config.enabledGimmicks.split = document.getElementById('toggle-split').checked;
+        config.enabledGimmicks.blackout = document.getElementById('toggle-blackout').checked;
+        config.enabledGimmicks.fullEscape = document.getElementById('toggle-fullEscape').checked;
+        config.enabledGimmicks.virus = document.getElementById('toggle-virus').checked;
+      }
+
+      showMain();
+    }
+
+    function showMain() {
+      document.getElementById('settings-view').style.display = 'none';
+      document.getElementById('result-view').style.display = 'none';
+      document.getElementById('game-view').style.display = 'none';
+      document.getElementById('main-view').style.display = 'block';
+    }
+
+    function playBeep(freq = 440, type = 'sine', duration = 0.08) {
+      try {
+        if (!gameState.audioCtx) {
+          gameState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const osc = gameState.audioCtx.createOscillator();
+        const gain = gameState.audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.value = 0.08;
+        osc.connect(gain);
+        gain.connect(gameState.audioCtx.destination);
+        osc.start();
+        osc.stop(gameState.audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function startGame(difficulty) {
+      document.getElementById('main-view').style.display = 'none';
+      document.getElementById('game-view').style.display = 'block';
+
+      gameState.active = true;
+      gameState.difficulty = difficulty;
+      gameState.score = 0;
+      gameState.combo = 0;
+      gameState.maxCombo = 0;
+      gameState.hitCount = 0;
+      gameState.missCount = 0;
+      gameState.gauge = 0;
+      gameState.isFever = false;
+      gameState.feverType = null;
+      gameState.feverMultiplier = 1.0;
+      gameState.virusCleanCount = 0;
+
+      if (gameState.feverIntervalId) clearInterval(gameState.feverIntervalId);
+      if (gameState.glitchTextTimer) clearInterval(gameState.glitchTextTimer);
+      if (gameState.glitchPopTimer) clearInterval(gameState.glitchPopTimer);
+      gameState.timeLeft = config.playTimeMinutes * 60;
+      gameState.notes = [];
+      
+      document.getElementById('score-display').innerText = '0';
+      resetFeverVisuals();
+
+      // 기믹 활성화 조건 체크
+      let isGimmickActive = (difficulty === 'hard' && config.enableGimmick);
+      if (config.secretUnlocked) {
+        isGimmickActive = config.secretGimmickForce;
+      }
+
+      document.getElementById('gauge-wrapper').style.display = isGimmickActive ? 'block' : 'none';
+
+      updateComboDisplay();
+      updateStatsDisplay();
+      updateGaugeDisplay();
+      updateTimeDisplay();
+
+      for (let i = 0; i < 4; i++) {
+        const hitLine = document.getElementById(`hit-line-${i}`);
+        const label = document.getElementById(`label-${i}`);
+        
+        if (config.direction === 'down') {
+          hitLine.style.top = '500px';
+          hitLine.style.bottom = 'auto';
+          label.style.bottom = '0px';
+          label.style.top = 'auto';
+        } else {
+          hitLine.style.top = '60px';
+          hitLine.style.bottom = 'auto';
+          label.style.top = '0px';
+          label.style.bottom = 'auto';
+        }
+        label.innerText = config.keys[i];
+      }
+
+      let spawnInterval = 600;
+      if (difficulty === 'easy') {
+        spawnInterval = 600;
+        gameState.baseSpeed = 5;
+      } else if (difficulty === 'normal') {
+        spawnInterval = 400;
+        gameState.baseSpeed = 7.5;
+      } else if (difficulty === 'hard') {
+        spawnInterval = 250;
+        gameState.baseSpeed = 10;
+      }
+
+      gameState.timerId = setInterval(() => {
+        if (gameState.isFever && (gameState.feverType === 'blackout' || gameState.feverType === 'fullEscape' || gameState.feverType === 'virus')) {
+          return;
+        }
+        gameState.timeLeft--;
+        updateTimeDisplay();
+        if (gameState.timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+
+      gameState.spawnTimerId = setInterval(() => {
+        spawnPatternNote();
+      }, spawnInterval);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function updateTimeDisplay() {
+      const min = String(Math.floor(gameState.timeLeft / 60)).padStart(2, '0');
+      const sec = String(gameState.timeLeft % 60).padStart(2, '0');
+      document.getElementById('time-display').innerText = `${min}:${sec}`;
+    }
+
+    function updateComboDisplay() {
+      document.getElementById('current-combo').innerText = gameState.combo;
+      document.getElementById('max-combo').innerText = gameState.maxCombo;
+    }
+
+    function updateStatsDisplay() {
+      document.getElementById('stat-hit').innerText = gameState.hitCount;
+      document.getElementById('stat-miss').innerText = gameState.missCount;
+      
+      const total = gameState.hitCount + gameState.missCount;
+      const acc = total === 0 ? 100 : Math.round((gameState.hitCount / total) * 100);
+      document.getElementById('stat-accuracy').innerText = `${acc}%`;
+    }
+
+    function updateGaugeDisplay() {
+      document.getElementById('gauge-fill').style.width = `${gameState.gauge}%`;
+    }
+
+    function clearGlitchPopups() {
+      document.querySelectorAll('.glitch-error-pop').forEach(el => el.remove());
+    }
+
+    function resetFeverVisuals() {
+      const mainContainer = document.getElementById('main-container');
+      const gameBoard = document.getElementById('game-board');
+      const statusText = document.getElementById('fever-status-text');
+      const gaugeContainer = document.getElementById('gauge-container');
+      const gaugeFill = document.getElementById('gauge-fill');
+      const antivirusPop = document.getElementById('antivirus-pop');
+
+      if (gameState.glitchTextTimer) clearInterval(gameState.glitchTextTimer);
+      if (gameState.glitchPopTimer) clearInterval(gameState.glitchPopTimer);
+
+      clearGlitchPopups();
+
+      if (mainContainer.classList.contains('fever-blackout')) {
+        mainContainer.classList.add('power-on-effect');
+        setTimeout(() => mainContainer.classList.remove('power-on-effect'), 500);
+      }
+
+      antivirusPop.style.display = 'none';
+      document.body.classList.remove('blackout-bg');
+      mainContainer.classList.remove('slide-active', 'fever-blackout', 'flicker-effect', 'virus-vhs-active');
+      gameBoard.classList.remove('fever-speed', 'fever-slide', 'fever-split', 'fever-blackout', 'fever-full-escape', 'virus-vhs-active');
+      
+      gaugeContainer.classList.remove('blackout');
+      gaugeFill.classList.remove('blackout');
+
+      document.getElementById('game-header').classList.remove('hide-ui');
+      document.getElementById('combo-container').classList.remove('hide-ui');
+      document.getElementById('gauge-wrapper').classList.remove('hide-ui');
+      document.getElementById('side-stats').classList.remove('hide-ui');
+
+      for (let i = 0; i < 4; i++) {
+        document.getElementById(`label-${i}`).innerText = config.keys[i];
+      }
+
+      document.querySelectorAll('.note').forEach(n => n.classList.remove('glow-note', 'glow-note-red', 'cure-note'));
+
+      statusText.innerText = 'CHARGE';
+      statusText.style.color = '#5d6d7e';
+    }
+
+    function triggerFever() {
+      gameState.isFever = true;
+      const statusText = document.getElementById('fever-status-text');
+      const mainContainer = document.getElementById('main-container');
+      const gameBoard = document.getElementById('game-board');
+      const gaugeContainer = document.getElementById('gauge-container');
+      const gaugeFill = document.getElementById('gauge-fill');
+
+      // 활성화된 기믹 리스트 추출
+      let availableGimmicks = [];
+      if (!config.secretUnlocked) {
+        availableGimmicks = ['speed', 'slide', 'split', 'blackout', 'fullEscape', 'virus'];
+      } else {
+        if (config.enabledGimmicks.speed) availableGimmicks.push('speed');
+        if (config.enabledGimmicks.slide) availableGimmicks.push('slide');
+        if (config.enabledGimmicks.split) availableGimmicks.push('split');
+        if (config.enabledGimmicks.blackout) availableGimmicks.push('blackout');
+        if (config.enabledGimmicks.fullEscape) availableGimmicks.push('fullEscape');
+        if (config.enabledGimmicks.virus) availableGimmicks.push('virus');
+      }
+
+      // 켜진 기믹이 없으면 피버 취소 후 종료
+      if (availableGimmicks.length === 0) {
+        endFever();
+        return;
+      }
+
+      const selectedGimmick = availableGimmicks[Math.floor(Math.random() * availableGimmicks.length)];
+
+      if (selectedGimmick === 'virus') {
+        // 1. ERROR / 백신 기믹
+        gameState.feverType = 'virus';
+        gameState.feverMultiplier = 1.0;
+        gameState.virusCleanCount = 0;
+
+        statusText.innerText = '⚠️ SYSTEM ERROR! TIME PAUSED';
+        statusText.style.color = '#ff0055';
+        
+        mainContainer.classList.add('virus-vhs-active');
+        gameBoard.classList.add('virus-vhs-active');
+        
+        const antivirusPop = document.getElementById('antivirus-pop');
+        antivirusPop.style.display = 'block';
+        document.getElementById('virus-clean-target-text').innerText = `💊 치료 백신 노트(${config.secretVirusRequired}개) 수집 필요`;
+        document.getElementById('virus-clean-fill').style.width = '0%';
+        document.getElementById('virus-clean-status').innerText = 'CLEANING: 0%';
+
+        playBeep(120, 'sawtooth', 0.5);
+
+        gameState.glitchTextTimer = setInterval(() => {
+          for (let i = 0; i < 4; i++) {
+            document.getElementById(`label-${i}`).innerText = virusEmojis[Math.floor(Math.random() * virusEmojis.length)];
+          }
+        }, 120);
+
+        gameState.glitchPopTimer = setInterval(() => {
+          if (Math.random() < 0.6) {
+            const popupCount = Math.floor(Math.random() * 3) + 2;
+            
+            for (let c = 0; c < popupCount; c++) {
+              const errDiv = document.createElement('div');
+              errDiv.className = 'glitch-error-pop';
+              
+              const hexErr = '0x' + Math.floor(Math.random()*16777215).toString(16).toUpperCase();
+              errDiv.innerHTML = `
+                <div class="retro-title-bar">
+                  <span>ERROR.EXE</span>
+                  <span>[X]</span>
+                </div>
+                <div class="retro-body" style="color: #800000; font-weight: bold; font-size: 0.85rem;">
+                  ⚠️ FATAL ERROR ${hexErr}<br>SYSTEM MEMORY CORRUPTED!
+                </div>
+              `;
+
+              const randomX = Math.floor(Math.random() * 500) - 100;
+              const randomY = Math.floor(Math.random() * 420) + 20;
+              errDiv.style.left = `${randomX}px`;
+              errDiv.style.top = `${randomY}px`;
+
+              mainContainer.appendChild(errDiv);
+
+              setTimeout(() => {
+                errDiv.remove();
+              }, 400 + Math.random() * 500);
+            }
+          }
+        }, 650);
+
+      } else if (selectedGimmick === 'blackout') {
+        // 2. BLACKOUT 기믹
+        gameState.feverType = 'blackout';
+        gameState.feverMultiplier = 1.0;
+        statusText.innerText = '💡 BLACKOUT (정전)!';
+        statusText.style.color = '#00ffcc';
+
+        const durationSeconds = Math.floor(Math.random() * 8) + 5;
+        const totalDurationMs = durationSeconds * 1000;
+        let elapsedMs = 0;
+
+        mainContainer.classList.add('flicker-effect');
+        setTimeout(() => {
+          if (gameState.isFever && gameState.feverType === 'blackout') {
+            document.body.classList.add('blackout-bg');
+            mainContainer.classList.add('fever-blackout');
+            gameBoard.classList.add('fever-blackout');
+            
+            gaugeContainer.classList.add('blackout');
+            gaugeFill.classList.add('blackout');
+            statusText.innerText = '💡 BLACKOUT (???s)';
+
+            document.querySelectorAll('.note').forEach(n => n.classList.add('glow-note'));
+          }
+        }, 300);
+
+        playBeep(880);
+
+        gameState.feverIntervalId = setInterval(() => {
+          elapsedMs += 50;
+          if (elapsedMs >= totalDurationMs) {
+            endFever();
+          }
+        }, 50);
+
+      } else if (selectedGimmick === 'fullEscape') {
+        // 3. FULL ESCAPE 기믹
+        gameState.feverType = 'fullEscape';
+        gameState.feverMultiplier = 1.0;
+        statusText.innerText = '🚨 FULL ESCAPE!';
+        statusText.style.color = '#ff0055';
+
+        const durationSeconds = Math.floor(Math.random() * 8) + 5;
+        const totalDurationMs = durationSeconds * 1000;
+        let elapsedMs = 0;
+
+        mainContainer.classList.add('flicker-effect');
+        setTimeout(() => {
+          if (gameState.isFever && gameState.feverType === 'fullEscape') {
+            document.body.classList.add('blackout-bg');
+            mainContainer.classList.add('fever-blackout');
+            gameBoard.classList.add('fever-full-escape');
+
+            document.getElementById('game-header').classList.add('hide-ui');
+            document.getElementById('combo-container').classList.add('hide-ui');
+            document.getElementById('gauge-wrapper').classList.add('hide-ui');
+            document.getElementById('side-stats').classList.add('hide-ui');
+
+            document.querySelectorAll('.note').forEach(n => n.classList.add('glow-note-red'));
+          }
+        }, 300);
+
+        playBeep(880);
+
+        gameState.feverIntervalId = setInterval(() => {
+          elapsedMs += 50;
+          if (elapsedMs >= totalDurationMs) {
+            endFever();
+          }
+        }, 50);
+
+      } else if (selectedGimmick === 'speed') {
+        // 4. SPEED UP 기믹
+        gameState.feverType = 'speed';
+        gameState.feverMultiplier = 1.6;
+        statusText.innerText = '⚡ SPEED UP (1.6x)';
+        statusText.style.color = '#e74c3c';
+        gameBoard.classList.add('fever-speed');
+        playBeep(880);
+        startStandardFever();
+
+      } else if (selectedGimmick === 'slide') {
+        // 5. WIDE SLIDE 기믹
+        gameState.feverType = 'slide';
+        gameState.feverMultiplier = 1.0;
+        statusText.innerText = '↔️ WIDE SLIDE!';
+        statusText.style.color = '#9b59b6';
+        gameBoard.classList.add('fever-slide');
+        mainContainer.classList.add('slide-active');
+        playBeep(880);
+        startStandardFever();
+
+      } else if (selectedGimmick === 'split') {
+        // 6. WINDOW SHATTER 기믹
+        gameState.feverType = 'split';
+        gameState.feverMultiplier = 1.0;
+        statusText.innerText = '💥 WINDOW SHATTER!';
+        statusText.style.color = '#e67e22';
+        gameBoard.classList.add('fever-split');
+        playBeep(880);
+        startStandardFever();
+      }
+    }
+
+    function startStandardFever() {
+      gameState.feverIntervalId = setInterval(() => {
+        gameState.gauge -= 1;
+        if (gameState.gauge <= 0) {
+          endFever();
+        }
+        updateGaugeDisplay();
+      }, 50);
+    }
+
+    function endFever() {
+      gameState.gauge = 0;
+      if (gameState.feverIntervalId) clearInterval(gameState.feverIntervalId);
+      if (gameState.glitchTextTimer) clearInterval(gameState.glitchTextTimer);
+      if (gameState.glitchPopTimer) clearInterval(gameState.glitchPopTimer);
+      gameState.isFever = false;
+      gameState.feverType = null;
+      gameState.feverMultiplier = 1.0;
+      resetFeverVisuals();
+      updateGaugeDisplay();
+    }
+
+    function spawnPatternNote() {
+      if (!gameState.active) return;
+
+      const randPattern = Math.random();
+
+      if (randPattern < 0.2) {
+        let t1 = Math.floor(Math.random() * 4);
+        let t2 = (t1 + 1 + Math.floor(Math.random() * 3)) % 4;
+        createNote(t1);
+        createNote(t2);
+      } else {
+        let t = Math.floor(Math.random() * 4);
+        createNote(t);
+      }
+    }
+
+    function createNote(trackIdx) {
+      let emoji = emojis[Math.floor(Math.random() * emojis.length)];
+      let isCureNote = false;
+
+      if (gameState.isFever && gameState.feverType === 'virus') {
+        if (Math.random() < 0.35) {
+          isCureNote = true;
+          emoji = '💊';
+        } else {
+          emoji = virusEmojis[Math.floor(Math.random() * virusEmojis.length)];
+        }
+      }
+
+      const noteEl = document.createElement('div');
+      noteEl.className = 'note';
+      noteEl.innerText = emoji;
+
+      if (isCureNote) {
+        noteEl.classList.add('cure-note');
+      } else if (gameState.isFever && gameState.feverType === 'blackout') {
+        noteEl.classList.add('glow-note');
+      } else if (gameState.isFever && gameState.feverType === 'fullEscape') {
+        noteEl.classList.add('glow-note-red');
+      }
+
+      const trackEl = document.getElementById(`track-${trackIdx}`);
+      trackEl.appendChild(noteEl);
+
+      const startPos = config.direction === 'down' ? -35 : 580;
+
+      let noteSpeedMult = 1.0;
+      if (gameState.isFever && gameState.feverType === 'virus') {
+        noteSpeedMult = 0.4 + Math.random() * 1.5;
+      } else if (gameState.isFever && (gameState.feverType === 'blackout' || gameState.feverType === 'fullEscape')) {
+        noteSpeedMult = 0.6 + Math.random() * 1.1; 
+      }
+
+      gameState.notes.push({
+        element: noteEl,
+        track: trackIdx,
+        pos: startPos,
+        speedMult: noteSpeedMult,
+        isCureNote: isCureNote
+      });
+    }
+
+    function gameLoop() {
+      if (!gameState.active) return;
+
+      const hitLinePos = config.direction === 'down' ? 500 : 60;
+
+      for (let i = gameState.notes.length - 1; i >= 0; i--) {
+        let note = gameState.notes[i];
+
+        const currentSpeed = gameState.baseSpeed * config.speedMultiplier * gameState.feverMultiplier * note.speedMult;
+
+        if (config.direction === 'down') {
+          note.pos += currentSpeed;
+          note.element.style.top = note.pos + 'px';
+
+          if (note.pos > hitLinePos + 55) {
+            handleMiss();
+            removeNote(i);
+          }
+        } else {
+          note.pos -= currentSpeed;
+          note.element.style.top = note.pos + 'px';
+
+          if (note.pos < hitLinePos - 55) {
+            handleMiss();
+            removeNote(i);
+          }
+        }
+      }
+
+      gameState.animId = requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (!gameState.active) return;
+
+      const keyIndex = config.keys.findIndex(k => k.toLowerCase() === e.key.toLowerCase());
+      if (keyIndex === -1) return;
+
+      const trackEl = document.getElementById(`track-${keyIndex}`);
+      trackEl.classList.add('active');
+
+      const hitLinePos = config.direction === 'down' ? 500 : 60;
+      let targetNoteIndex = -1;
+      let minDistance = 999;
+
+      for (let i = 0; i < gameState.notes.length; i++) {
+        const note = gameState.notes[i];
+        if (note.track === keyIndex) {
+          const dist = Math.abs(note.pos - hitLinePos);
+          if (dist < minDistance) {
+            minDistance = dist;
+            targetNoteIndex = i;
+          }
+        }
+      }
+
+      if (targetNoteIndex !== -1 && minDistance < 85) {
+        const hitNote = gameState.notes[targetNoteIndex];
+
+        if (minDistance < 35) {
+          gameState.score += 100;
+          playBeep(523.25);
+        } else if (minDistance < 60) {
+          gameState.score += 70;
+          playBeep(440);
+        } else {
+          gameState.score += 40;
+          playBeep(349.23);
+        }
+
+        gameState.hitCount++;
+        gameState.combo++;
+        if (gameState.combo > gameState.maxCombo) {
+          gameState.maxCombo = gameState.combo;
+        }
+
+        if (gameState.isFever && gameState.feverType === 'virus' && hitNote.isCureNote) {
+          gameState.virusCleanCount++;
+          const targetReq = config.secretVirusRequired;
+          const cleanPct = Math.min(100, Math.floor((gameState.virusCleanCount / targetReq) * 100));
+
+          document.getElementById('virus-clean-fill').style.width = `${cleanPct}%`;
+          document.getElementById('virus-clean-status').innerText = `CLEANING: ${cleanPct}% (${gameState.virusCleanCount}/${targetReq})`;
+
+          playBeep(1046.5, 'triangle', 0.1);
+
+          if (gameState.virusCleanCount >= targetReq) {
+            setTimeout(() => {
+              endFever();
+            }, 200);
+          }
+        }
+
+        // 게이지 충전 제어
+        let gimmickEnabled = (gameState.difficulty === 'hard' && config.enableGimmick);
+        let incAmount = 5;
+
+        if (config.secretUnlocked) {
+          gimmickEnabled = config.secretGimmickForce;
+          incAmount = config.secretGaugeIncrement;
+        }
+
+        if (gimmickEnabled && !gameState.isFever) {
+          gameState.gauge = Math.min(100, gameState.gauge + incAmount);
+          updateGaugeDisplay();
+          if (gameState.gauge >= 100) {
+            triggerFever();
+          }
+        }
+
+        document.getElementById('score-display').innerText = gameState.score;
+        updateComboDisplay();
+        updateStatsDisplay();
+        removeNote(targetNoteIndex);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const keyIndex = config.keys.findIndex(k => k.toLowerCase() === e.key.toLowerCase());
+      if (keyIndex !== -1) {
+        document.getElementById(`track-${keyIndex}`).classList.remove('active');
+      }
+    });
+
+    function handleMiss() {
+      gameState.missCount++;
+      gameState.combo = 0;
+
+      let gimmickEnabled = (gameState.difficulty === 'hard' && config.enableGimmick);
+      if (config.secretUnlocked) {
+        gimmickEnabled = config.secretGimmickForce;
+      }
+
+      if (gimmickEnabled && !gameState.isFever) {
+        gameState.gauge = Math.max(0, gameState.gauge - 10);
+        updateGaugeDisplay();
+      }
+
+      updateComboDisplay();
+      updateStatsDisplay();
+    }
+
+    function removeNote(index) {
+      if (gameState.notes[index]) {
+        gameState.notes[index].element.remove();
+        gameState.notes.splice(index, 1);
+      }
+    }
+
+    function cancelGame() {
+      stopGame();
+      showMain();
+    }
+
+    function endGame() {
+      stopGame();
+      document.getElementById('game-view').style.display = 'none';
+      document.getElementById('result-view').style.display = 'block';
+
+      const total = gameState.hitCount + gameState.missCount;
+      const acc = total === 0 ? 100 : Math.round((gameState.hitCount / total) * 100);
+
+      document.getElementById('final-score').innerText = gameState.score;
+      document.getElementById('final-combo').innerText = gameState.maxCombo;
+      document.getElementById('final-acc').innerText = `${acc}%`;
+      document.getElementById('final-miss').innerText = gameState.missCount;
+    }
+
+    function stopGame() {
+      gameState.active = false;
+      clearInterval(gameState.timerId);
+      clearInterval(gameState.spawnTimerId);
+      cancelAnimationFrame(gameState.animId);
+      if (gameState.feverIntervalId) clearInterval(gameState.feverIntervalId);
+      if (gameState.glitchTextTimer) clearInterval(gameState.glitchTextTimer);
+      if (gameState.glitchPopTimer) clearInterval(gameState.glitchPopTimer);
+
+      resetFeverVisuals();
+      gameState.notes.forEach(n => n.element.remove());
+      gameState.notes = [];
+    }
+  </script>
+</body>
+</html>
